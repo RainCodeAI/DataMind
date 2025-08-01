@@ -1,0 +1,8 @@
+# the_analyst/requirements.txt
+
+streamlit
+langchain
+langchain-openai
+python-dotenv
+pandas
+tabulate
