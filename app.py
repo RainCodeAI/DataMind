@@ -134,19 +134,24 @@ if prompt := st.chat_input("Ask a question about your data..."):
                 st.session_state.messages.append({"role": "assistant", "content": demo_response})
             else:
                 # Full mode with actual analysis
-                with st.spinner("Analyzing your data..."):
-                    try:
-                        response = st.session_state.agent.get_response(
-                            csv_file_path=st.session_state.temp_file_path,
-                            user_query=prompt
-                        )
-                        st.markdown(response)
-                        # Add assistant response to chat history
-                        st.session_state.messages.append({"role": "assistant", "content": response})
-                    except Exception as e:
-                        error_message = f"I encountered an error while analyzing your data: {str(e)}"
-                        st.error(error_message)
-                        st.session_state.messages.append({"role": "assistant", "content": error_message})
+                if st.session_state.agent:
+                    with st.spinner("Analyzing your data..."):
+                        try:
+                            response = st.session_state.agent.get_response(
+                                csv_file_path=st.session_state.temp_file_path,
+                                user_query=prompt
+                            )
+                            st.markdown(response)
+                            # Add assistant response to chat history
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                        except Exception as e:
+                            error_message = f"I encountered an error while analyzing your data: {str(e)}"
+                            st.error(error_message)
+                            st.session_state.messages.append({"role": "assistant", "content": error_message})
+                else:
+                    error_message = "Agent not properly initialized. Please check your API key configuration."
+                    st.error(error_message)
+                    st.session_state.messages.append({"role": "assistant", "content": error_message})
     else:
         # Warning if no file is uploaded
         warning_message = "⚠️ Please upload a CSV file first to ask questions about it."
@@ -158,9 +163,9 @@ if prompt := st.chat_input("Ask a question about your data..."):
 st.markdown("---")
 st.markdown(
     """
-    <div style='text-align: center; color: #666; padding: 20px;'>
-        Powered by <strong>OpenAI GPT</strong> and <strong>LangChain</strong> • 
-        Built with <strong>Streamlit</strong>
+    <div style='text-align: center; color: #888; padding: 20px;'>
+        Powered by <strong>RainCode AI</strong> • 
+        Built with <strong>OpenAI GPT</strong>, <strong>LangChain</strong> & <strong>Streamlit</strong>
     </div>
     """, 
     unsafe_allow_html=True

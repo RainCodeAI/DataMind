@@ -5,6 +5,8 @@ The Analyst is an AI-powered data analysis application that enables users to upl
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+UI Theme: Dark mode as default
+Branding: "Powered by RainCode AI" footer attribution
 
 # System Architecture
 
