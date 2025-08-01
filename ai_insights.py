@@ -528,7 +528,7 @@ class AIInsights:
             
             st.session_state.insight_notifications.append(notification)
     
-    def render_insights_dashboard(self, df: pd.DataFrame = None):
+    def render_insights_dashboard(self, df: Optional[pd.DataFrame] = None):
         """Render the AI insights dashboard"""
         st.subheader("🤖 AI-Powered Insights")
         

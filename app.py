@@ -13,6 +13,7 @@ from export_manager import ExportManager
 from advanced_analytics import AdvancedAnalytics
 from collaboration_manager import CollaborationManager
 from ai_insights import AIInsights
+from database_manager import DatabaseManager
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -60,6 +61,9 @@ if "collaboration_manager" not in st.session_state:
 if "ai_insights" not in st.session_state:
     st.session_state.ai_insights = AIInsights()
 
+if "database_manager" not in st.session_state:
+    st.session_state.database_manager = DatabaseManager()
+
 if "current_dataframe" not in st.session_state:
     st.session_state.current_dataframe = None
 
@@ -77,7 +81,7 @@ with st.sidebar:
     # Main navigation
     page = st.selectbox(
         "Choose your workspace:",
-        ["💬 Chat Analysis", "📁 File Manager", "📊 Data Profiling", 
+        ["💬 Chat Analysis", "📁 File Manager", "🗄️ Database", "📊 Data Profiling", 
          "📈 Visualizations", "🧠 Advanced Analytics", "📤 Export & Reports", 
          "👥 Collaboration", "🤖 AI Insights"]
     )
@@ -119,11 +123,34 @@ with st.sidebar:
         except Exception as e:
             st.error(f"Error uploading file: {e}")
     
+    # Database connections status
+    db_connections = st.session_state.database_manager.get_connections()
+    if db_connections:
+        st.divider()
+        st.header("🗄️ Database Status")
+        active_connections = sum(1 for conn in db_connections.keys() 
+                               if st.session_state.database_manager.test_connection(conn))
+        st.metric("Active Connections", active_connections)
+        
+        for conn_name in list(db_connections.keys())[:3]:  # Show first 3
+            status = "🟢" if st.session_state.database_manager.test_connection(conn_name) else "🔴"
+            st.write(f"{status} {conn_name}")
+
     # Quick stats for current data
     if st.session_state.current_dataframe is not None:
         st.divider()
         st.header("📊 Current Data")
         df = st.session_state.current_dataframe
+        
+        # Show data source
+        if hasattr(st.session_state, 'current_table_info'):
+            info = st.session_state.current_table_info
+            if info.get('source') == 'database':
+                st.caption(f"📊 Database: {info['table']} from {info['connection']}")
+            elif info.get('source') == 'query':
+                st.caption(f"📊 Query result from {info['connection']}")
+            else:
+                st.caption("📄 CSV file")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -251,6 +278,9 @@ if page == "💬 Chat Analysis":
 
 elif page == "📁 File Manager":
     st.session_state.file_manager.render_file_manager_ui()
+
+elif page == "🗄️ Database":
+    st.session_state.database_manager.render_database_interface()
 
 elif page == "📊 Data Profiling":
     st.header("📊 Data Profiling Dashboard")
