@@ -1,0 +1,8 @@
+openapi: 3.1.0
+info: { title: DataMind API (Analyst MVP), version: 0.1.0 }
+paths:
+  /upload: { post: { summary: Upload CSV and profile } }
+  /profile/{dataset_id}: { get: { summary: Get profile + semantic schema } }
+  /profile/{dataset_id}/confirm: { post: { summary: Approve semantic schema } }
+  /query: { post: { summary: Ask a question (NL→SQL) } }
+  /export: { post: { summary: Export governed result } }
