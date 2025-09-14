@@ -1,0 +1,18 @@
+# Python / project
+venv/
+.env
+__pycache__/
+*.pyc
+*.sqlite
+*.parquet
+.dagster/
+.streamlit/
+.local/
+
+# OS / editor
+.DS_Store
+*.log
+
+# Large local data (keep repos lean)
+*.csv
+samples/
