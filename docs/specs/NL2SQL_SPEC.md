@@ -1,29 +1,43 @@
-# Constrained NL→SQL — Design Spec
-Last updated: 2025-09-14
+# NL→SQL Engine Specification
 
-## Guardrails
-SELECT-only, LIMIT, deny-list/PII blocks, schema-constrained, read-only role.
+## Overview
+Constrained natural language to SQL conversion with security guards and validation.
 
-## Validation Pipeline
-Load schema → LLM draft → sqlglot parse → SELECT-only → LIMIT → columns in schema
-→ deny-list → execute → Woodpecker checks → charts → audit.
+## Input Processing
+1. **Interceptor**: Prompt sanitization and intent classification
+2. **Context Building**: Dataset schema + user context
+3. **LLM Generation**: Structured prompt → SQL generation
+4. **Validation**: sqlglot parsing and security checks
 
-## Pseudocode
-```python
-def answer(dataset_id, question, limit=1000):
-    cleaned = interceptor.clean(question)
-    schema = load_schema(dataset_id)
-    sql_draft = llm_generate_sql(schema, cleaned, limit)
-    node = sqlglot.parse_one(sql_draft, read='postgres')
-    assert node.is_select()
-    enforce_limit(node, limit)
-    ensure_columns_in_schema(node, schema)
-    ensure_no_denied(node, schema.denylist)
-    df = execute_readonly(node, dataset_id)
-    ok, flags = woodpecker.evaluate(schema, node, df.head(100))
-    if not ok: return {"error":"Validation failed", "flags": flags}
-    charts = suggest_charts(df, schema)
-    audit_id = audit.log({"dataset_id":dataset_id,"prompt":question,"sql":node.sql()})
-    return {"sql": node.sql(), "preview": df.head(50).to_dict("records"),
-            "charts": charts, "audit_id": audit_id, "woodpecker": {"ok": ok, "flags": flags}}
-```
+## Security Constraints
+- **SELECT-only**: No DDL/DML operations
+- **LIMIT 1000**: Mandatory row limit enforcement
+- **Column Deny-lists**: PII and sensitive data blocking
+- **Complexity Limits**: Query complexity scoring
+- **Schema Validation**: Table/column access verification
+
+## Output Validation (Woodpecker)
+1. **AST Analysis**: Parse and validate SQL structure
+2. **Schema Consistency**: Verify column/table references
+3. **Aggregation Safety**: Check aggregation logic
+4. **Performance Estimation**: Row count and cost analysis
+5. **Result Sanity**: Basic result validation
+
+## LLM Integration
+- **Model**: GPT-4 or Claude-3.5 for reliability
+- **Prompt Engineering**: Few-shot examples with schema context
+- **Confidence Scoring**: 0-1 confidence with thresholds
+- **Error Handling**: Graceful degradation and user feedback
+
+## Performance Requirements
+- Query generation: < 2 seconds
+- Validation: < 500ms
+- Overall pipeline: < 5 seconds p95
+- Accuracy: ≥95% on canonical test suite
+
+## Supported Query Types
+- Basic aggregations (SUM, COUNT, AVG)
+- Grouping and filtering
+- Time series analysis
+- Top-N queries
+- Simple joins (future)

@@ -1,8 +1,238 @@
-openapi: 3.1.0
-info: { title: DataMind API (Analyst MVP), version: 0.1.0 }
+openapi: 3.0.3
+info:
+  title: The Analyst API
+  description: Natural language to SQL interface for business analytics
+  version: 1.0.0
+
+servers:
+  - url: https://api.raincode.ai/v1
+    description: Production server
+  - url: https://staging-api.raincode.ai/v1
+    description: Staging server
+
 paths:
-  /upload: { post: { summary: Upload CSV and profile } }
-  /profile/{dataset_id}: { get: { summary: Get profile + semantic schema } }
-  /profile/{dataset_id}/confirm: { post: { summary: Approve semantic schema } }
-  /query: { post: { summary: Ask a question (NL→SQL) } }
-  /export: { post: { summary: Export governed result } }
+  /upload:
+    post:
+      summary: Upload and profile CSV dataset
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                dataset_name:
+                  type: string
+                  example: "Q4 Sales Data"
+                description:
+                  type: string
+                  example: "Quarterly sales performance data"
+      responses:
+        '201':
+          description: Dataset uploaded and profiling started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [profiling, ready, error]
+                  estimated_completion:
+                    type: string
+                    format: date-time
+                  profile_summary:
+                    type: object
+                    properties:
+                      row_count:
+                        type: integer
+                      column_count:
+                        type: integer
+                      estimated_types:
+                        type: array
+                        items:
+                          type: string
+                      pii_detected:
+                        type: boolean
+                      size_mb:
+                        type: number
+        '400':
+          description: Invalid file format or too large
+        '413':
+          description: File exceeds size limit
+
+  /profile/{dataset_id}:
+    get:
+      summary: Get dataset profile and semantic schema
+      parameters:
+        - name: dataset_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dataset profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [profiling, ready, error]
+                  semantic_schema:
+                    type: object
+                    properties:
+                      columns:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            type:
+                              type: string
+                              enum: [string, numeric, datetime, boolean]
+                            category:
+                              type: string
+                              enum: [identifier, metric, temporal, categorical]
+                            pii_detected:
+                              type: boolean
+                            blocked:
+                              type: boolean
+                            synonyms:
+                              type: array
+                              items:
+                                type: string
+                            confidence:
+                              type: number
+                              minimum: 0
+                              maximum: 1
+                      relationships:
+                        type: array
+                      constraints:
+                        type: object
+                        properties:
+                          max_rows:
+                            type: integer
+                          blocked_columns:
+                            type: array
+                            items:
+                              type: string
+                          allowed_operations:
+                            type: array
+                            items:
+                              type: string
+                  sample_data:
+                    type: array
+                    items:
+                      type: array
+                      items: {}
+        '404':
+          description: Dataset not found
+        '202':
+          description: Still profiling
+
+  /query:
+    post:
+      summary: Execute natural language query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dataset_id
+                - question
+              properties:
+                dataset_id:
+                  type: string
+                  format: uuid
+                question:
+                  type: string
+                  example: "What are the top 10 products by revenue?"
+                context:
+                  type: string
+                  description: "Optional user session context"
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audit_id:
+                    type: string
+                    format: uuid
+                  sql:
+                    type: string
+                    example: "SELECT product_name, SUM(revenue) FROM dataset GROUP BY product_name ORDER BY SUM(revenue) DESC LIMIT 10"
+                  result_preview:
+                    type: object
+                    properties:
+                      rows:
+                        type: array
+                        items:
+                          type: array
+                          items: {}
+                      total_rows:
+                        type: integer
+                      execution_time_ms:
+                        type: integer
+                      row_limit_hit:
+                        type: boolean
+                  suggested_charts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [bar, line, scatter, pie]
+                        title:
+                          type: string
+                        x_axis:
+                          type: string
+                        y_axis:
+                          type: string
+                  confidence:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Invalid request or blocked query
+        '404':
+          description: Dataset not found
+        '422':
+          description: Query exceeds complexity limits
+        '429':
+          description: Rate limit exceeded
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
